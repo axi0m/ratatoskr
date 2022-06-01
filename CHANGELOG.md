@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Exponential Backoff Algorithm
 - Ratelimit support for GitLab and Rocket.Chat Webhooks
 - Logging
+- Test Slack, Discord, and Microsoft Teams Webook Support
+- Use environment variables for webhook definition per https://12factor.net/config
 
 ## [0.3.1] - 2021-05-26
 
