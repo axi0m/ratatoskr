@@ -16,22 +16,12 @@ from datetime import datetime
 from __init__ import __version__
 from __init__ import __prog__
 
-# TODO: Add handling for HTTP 429 from GitLab and "Retry-After"
-# TODO: Add handling for HTTP 403 from GitHub and "X-RateLimit-Reset"
-# TODO: Add handling for webhook rate limiting for Rocket.Chat
-# TODO: Add function call during load to delete records
-# TODO: Add decent logging
-# TODO: Add --verbose parameter after logging enabled
-
 # Get the current timestamp
 now = datetime.now()
 dt_formatted = now.strftime("%d/%m/%Y %H:%M:%S")
 
 # Define header values
 USERAGENT = f"ratatoskr-{__version__}"
-
-# Rocket Webhook URL
-webhook_url = "REDACTED"
 
 # Init rich console
 console = Console()
@@ -42,15 +32,25 @@ htmlsession = HTMLSession()
 # DB Connection
 con = sl.connect("tracker.db", timeout=5)
 
+# Create filename to save messages if RC is down
+# Format YYYY-MM-DD
+dt_formatted_filename = now.strftime("%Y-%m-%d")
+# Get Process ID
+pid = os.getpid()
+# Construct filename to save message state
+filename = f'ratatoskr_{dt_formatted_filename}_{pid}.json'
+# Inform user of constructed filename
+console.print(f'[+] INFO - Filename for saving messages is: {filename}')
 
-def verify_token(environment_variable):
-    """Ensure we have our personal access token"""
 
-    token = os.getenv(environment_variable)
-    if not token:
-        return False
+def verify_environment(environment_variable):
+    """Verify if a provided environment variable has a value and return that value if true"""
+
+    value = os.getenv(environment_variable)
+    if not value:
+        return None
     else:
-        return token
+        return value
 
 
 def get_ratelimit_status(session):
@@ -65,7 +65,7 @@ def get_ratelimit_status(session):
         result = (requests_remaining, requests_reset_time)
         return result
     if response.status_code != 200:
-        return False
+        return None
 
 
 def get_urls(filename):
@@ -108,14 +108,13 @@ def get_gitlab_projectid(session, repository):
     response = session.get(query_url, timeout=5)
 
     if response.status_code == 200:
-        # Isolate the proper CSS Element Text
-        project_temp = response.html.find(".btn-tertiary")[0].text
-        split_components = project_temp.split(" ")
-        projectid = split_components[2]
+        # Isolate the proper CSS Element and extract value attribute
+        project_temp = response.html.find("#project_id")
+        projectid = project_temp[0].attrs['value']
         return projectid
 
     if response.status_code != 200:
-        return False
+        return None
 
 
 def get_gitlab_latest_release(session, projectid):
@@ -126,16 +125,13 @@ def get_gitlab_latest_release(session, projectid):
 
     if "json" in response.headers.get("Content-Type"):
         response_json = response.json()
-    else:
-        console.print(f"[!] Response content is not in JSON format", style="bold red")
-        return False
 
-    if response_json == [] and response.status_code == 200:
-        console.print(
-            f"\n[!] INFO - No release found for project ID {projectid}",
-            style="bold yellow",
-        )
-        return False
+        if response_json == [] and response.status_code == 200:
+            console.print(
+                f"\n[!] INFO - No release found for project ID {projectid}",
+                style="bold yellow",
+            )
+            return None
 
     if response.status_code == 404:
         console.print(
@@ -146,7 +142,7 @@ def get_gitlab_latest_release(session, projectid):
     try:
         latest_release = response_json[0]["_links"].get("self")
     except KeyError:
-        return False
+        return None
 
     if latest_release:
         return latest_release
@@ -160,22 +156,18 @@ def get_gitlab_latest_commit(session, projectid):
 
     if "json" in response.headers.get("Content-Type"):
         response_json = response.json()
-    else:
-        console.print(f"[!] Response content is not in JSON format", style="bold red")
-        return False
 
-    if response.status_code == 404:
-        console.print(
-            f"[!] WARN - Project {projectid} was not found at {query_url} be sure to confirm the URL",
-            style="bold red",
-        )
+        if response.status_code == 404:
+            console.print(
+                f"[!] WARN - Project {projectid} was not found at {query_url} be sure to confirm the URL",
+                style="bold red",
+            )
 
-    latest_commit = response_json[0]
-    if latest_commit.get("web_url"):
-        return latest_commit["web_url"]
+        latest_commit = response_json[0]
+        if latest_commit.get("web_url"):
+            return latest_commit["web_url"]
     else:
-        print(response_json[0])
-        return False
+        return None
 
 
 def get_latest_release(session, repository):
@@ -190,14 +182,10 @@ def get_latest_release(session, repository):
 
     if "json" in response.headers.get("Content-Type"):
         response_json = response.json()
+        if response_json.get("html_url"):
+            return response_json["html_url"]
     else:
-        console.print(f"[!] Response content is not in JSON format", style="bold red")
-        return False
-
-    if response_json.get("html_url"):
-        return response_json["html_url"]
-    else:
-        return False
+        return None
 
 
 def get_latest_commit(session, repository):
@@ -207,19 +195,15 @@ def get_latest_commit(session, repository):
     response = session.get(query_url, timeout=5)
 
     if not response:
-        return False
+        return None
 
     if "json" in response.headers.get("Content-Type"):
         response_json = response.json()
+        latest_commit = response_json[0]
+        if latest_commit.get("html_url"):
+            return latest_commit["html_url"]
     else:
-        console.print(f"[!] Response content is not in JSON format", style="bold red")
-        return False
-
-    latest_commit = response_json[0]
-    if latest_commit.get("html_url"):
-        return latest_commit["html_url"]
-    else:
-        return False
+        return None
 
 
 def update_tracker(connection, update):
@@ -270,7 +254,7 @@ def confirm_table(connection):
         cursor.execute("select * FROM sqlite_master WHERE type='table' and name='repo'")
         data = cursor.fetchall()
         if len(data) == 0:
-            return False
+            return None
         else:
             console.print(f"[!] INFO - Table already exists", style="bold yellow")
             return True
@@ -304,7 +288,7 @@ def confirm_repo(connection, repository):
         )
         data = cursor.fetchall()
         if len(data) == 0:
-            return False
+            return None
         else:
             return True
 
@@ -347,12 +331,23 @@ def read_repositories(connection):
     return repositories
 
 
-def save_messages(data):
-    """Write messages as JSON to disk in the event Rocket.Chat is unavailable"""
+def save_messages(data, filename):
+    """Write messages as JSON to disk in the event webhook is unsuccessful"""
 
-    with open("saved_messages.json", "w") as write_file:
-        json.dump(data, write_file)
-    console.print(f"[+] INFO - Wrote messages to disk", style="bold green")
+    try:
+        with open(filename, "rt") as fh:
+            existing_data = json.load(fh)
+    except IOError:
+        console.print(f"[!] ERROR - Unable to read file {filename}", style="bold red")
+        existing_data = {}
+    
+    # Update the dict object with new data passed to function
+    existing_data.update(data)
+
+    with open(filename, "wt") as fh:
+        json.dump(existing_data, fh)
+    
+    console.print(f"[!] WARN - Wrote messages to file {filename}", style="bold yellow")
 
 
 def rocket_alert(message, webhook_url):
@@ -373,12 +368,15 @@ def rocket_alert(message, webhook_url):
             f"[!] ERROR - POST request to RocketChat was unsuccessful: {r}",
             style="bold red",
         )
-        save_messages(data)
+        save_messages(data, filename)
+        return (False, r)
+
     if r.status_code == 200:
         console.print(
             f"[+] INFO - Webhook successfully POSTed to [blue]{webhook_url}[/blue]",
             style="bold green",
         )
+        return (True, r)
 
 
 def main():
@@ -411,9 +409,10 @@ def main():
     load = args.load
     check = args.check
 
-    # Verify token
-    github_token = verify_token("GITHUB_TOKEN")
-    gitlab_token = verify_token("GITLAB_TOKEN")
+    # Verify tokens and webhook
+    github_token = verify_environment("GITHUB_TOKEN")
+    gitlab_token = verify_environment("GITLAB_TOKEN")
+    webhook_url = verify_environment("ROCKETCHAT_WEBHOOK")
 
     # Exit if we don't have an API token
     if not github_token:
@@ -426,6 +425,13 @@ def main():
     if not gitlab_token:
         console.print(
             f"[!] ERROR No GitLab OAuth Token in environment variables",
+            style="bold red",
+        )
+        sys.exit(1)
+    
+    if not webhook_url:
+        console.print(
+            f"[!] ERROR No Rocket.Chat webhook URL in environment variables",
             style="bold red",
         )
         sys.exit(1)
@@ -477,7 +483,7 @@ def main():
     # Check rate limits
     github_ratelimit_response = get_ratelimit_status(s_github)
 
-    if github_ratelimit_response is False:
+    if github_ratelimit_response is None:
         console.print(f"[!] ERROR Unable to confirm rate limits", style="bold red")
         sys.exit(1)
 
@@ -503,7 +509,9 @@ def main():
         sys.exit(0)
 
     if check:
+        # Read tracker.db and populate all our repositories in memory
         repositories = read_repositories(con)
+
         if github_ratelimit_response[0] // len(repositories) == 0:
             console.print(
                 f"[!] WARN - Predicting GitHub rate limits based on remaining requests",
@@ -540,9 +548,9 @@ def main():
                 commit = get_gitlab_latest_commit(s_gitlab, projectid)
 
             # Check if latest release matches DB
-            if repo[2] != release and not None:
+            if repo[2] != release and release is not None:
                 console.print(
-                    f"\n[+] NEW release for repository {repo[1]}: {release}",
+                    f"\n[+] New release for repository {repo[1]}: {release}",
                     style="bold green",
                 )
 
@@ -552,11 +560,19 @@ def main():
 
                 # Send notification to Rocket.Chat webhook
                 message = f"New release for repository {repo[1]}: {release}"
-                rocket_alert(message, webhook_url)
+                response = rocket_alert(message, webhook_url)
 
-            if repo[3] != commit and not None:
+                # If response code is 429, backoff
+                if response[1].status_code == 429:
+                    delay_time = 60
+                    console.print(f'Too many requests, backing off for {delay_time}')
+                    time.sleep(delay_time)
+                    response = rocket_alert(message, webhook_url)
+
+
+            if repo[3] != commit and commit is not None:
                 console.print(
-                    f"\n[+] NEW commit for repository {repo[1]}: {commit}",
+                    f"\n[+] New commit for repository {repo[1]}: {commit}",
                     style="bold green",
                 )
 
@@ -566,7 +582,14 @@ def main():
 
                 # Send notification to Rocket.Chat webhook
                 message = f"New commit for repository {repo[1]}: {commit}"
-                rocket_alert(message, webhook_url)
+                response = rocket_alert(message, webhook_url)
+
+                # If response code is 429, backoff
+                if response[1].status_code == 429:
+                    delay_time = 60
+                    console.print(f'Too many requests, backing off for [blue]{delay_time}[/blue]')
+                    time.sleep(delay_time)
+                    response = rocket_alert(message, webhook_url)
 
 
 if __name__ == "__main__":
