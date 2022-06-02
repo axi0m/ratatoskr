@@ -38,9 +38,9 @@ dt_formatted_filename = now.strftime("%Y-%m-%d")
 # Get Process ID
 pid = os.getpid()
 # Construct filename to save message state
-filename = f'ratatoskr_{dt_formatted_filename}_{pid}.json'
+filename = f"ratatoskr_{dt_formatted_filename}_{pid}.json"
 # Inform user of constructed filename
-console.print(f'[+] INFO - Filename for saving messages is: {filename}')
+console.print(f"[+] INFO - Filename for saving messages is: {filename}")
 
 
 def verify_environment(environment_variable):
@@ -110,7 +110,7 @@ def get_gitlab_projectid(session, repository):
     if response.status_code == 200:
         # Isolate the proper CSS Element and extract value attribute
         project_temp = response.html.find("#project_id")
-        projectid = project_temp[0].attrs['value']
+        projectid = project_temp[0].attrs["value"]
         return projectid
 
     if response.status_code != 200:
@@ -340,13 +340,13 @@ def save_messages(data, filename):
     except IOError:
         console.print(f"[!] ERROR - Unable to read file {filename}", style="bold red")
         existing_data = {}
-    
+
     # Update the dict object with new data passed to function
     existing_data.update(data)
 
     with open(filename, "wt") as fh:
         json.dump(existing_data, fh)
-    
+
     console.print(f"[!] WARN - Wrote messages to file {filename}", style="bold yellow")
 
 
@@ -428,7 +428,7 @@ def main():
             style="bold red",
         )
         sys.exit(1)
-    
+
     if not webhook_url:
         console.print(
             f"[!] ERROR No Rocket.Chat webhook URL in environment variables",
@@ -565,10 +565,9 @@ def main():
                 # If response code is 429, backoff
                 if response[1].status_code == 429:
                     delay_time = 60
-                    console.print(f'Too many requests, backing off for {delay_time}')
+                    console.print(f"Too many requests, backing off for {delay_time}")
                     time.sleep(delay_time)
                     response = rocket_alert(message, webhook_url)
-
 
             if repo[3] != commit and commit is not None:
                 console.print(
@@ -587,7 +586,9 @@ def main():
                 # If response code is 429, backoff
                 if response[1].status_code == 429:
                     delay_time = 60
-                    console.print(f'Too many requests, backing off for [blue]{delay_time}[/blue]')
+                    console.print(
+                        f"Too many requests, backing off for [blue]{delay_time}[/blue]"
+                    )
                     time.sleep(delay_time)
                     response = rocket_alert(message, webhook_url)
 
