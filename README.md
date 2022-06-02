@@ -10,7 +10,7 @@
 ## Features ##
 
 1. Integration with GitHub API.
-2. Integration with Rocket.Chat API via webhooks.
+2. Integration with Rocket.Chat via webhooks.
 3. Integration with GitLab API.
 4. Supports HTTP Sessions.
 5. Automatic commit, rollback and DB connection closure and error handling.
@@ -42,7 +42,9 @@ pip install --user requirements.txt
 
 ## Usage ##
 
-Assumes you have pipenv installed, in your path and you've got a GitHub OAuth or Personal Access Token exported to environmental variable `GITHUB_TOKEN`. Python 3.6+
+### Environment ###
+
+Assumes you have pipenv installed, in your path and you've got a GitHub Personal Access Token exported to environmental variable `GITHUB_TOKEN`. Python 3.6+
 
 You must create a reference file called `GitHub_Tools_List.csv` in the current working directory with the URLs of the repositories you want to monitor.
 
@@ -64,14 +66,6 @@ pipenv run python3 ratatoskr.py --help
 
 ![help](images/help_output.png)
 
-### Initialize the database ###
-
-```shell
-pipenv run python3 ratatoskr.py --prep
-```
-
-![prep](images/prep_output.png)
-
 ### Load your repositores to monitor ###
 
 ```shell
@@ -82,8 +76,12 @@ pipenv run python3 ratatoskr.py --load
 
 ### First Run ###
 
+You will want to have a Personal Access Token for GitHub and GitLab, and the Rocket.Chat webhook exported to environment variables before attempting to load or run the script.
+
 ```shell
 export GITHUB_TOKEN='REDACTED'
+export GITLAB_TOKEN='REDACTED'
+export ROCKETCHAT_WEBHOOK='REDACTED'
 pipenv run python3 ratatoskr.py --check
 ```
 
