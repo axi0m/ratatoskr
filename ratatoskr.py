@@ -445,7 +445,7 @@ def parse_arguments():
 
     if provider is None:
         console.print(
-            f"[!] ERROR Chat provider was not provided by [green]--provider[/green] parameter!",
+            f"[!] ERROR Chat provider was not provided by [green]--provider[/green] argument!",
             style="bold red",
         )
         sys.exit(1)
@@ -523,9 +523,8 @@ def main():
     # Verify tokens and webhook
     github_token = verify_environment("GITHUB_TOKEN")
     gitlab_token = verify_environment("GITLAB_TOKEN")
-    webhook_url = verify_environment("ROCKETCHAT_WEBHOOK")
 
-    # Exit if we don't have an API token
+    # Exit if we don't have GitHub API token
     if not github_token:
         console.print(
             f"[!] ERROR No GitHub Personal Access Token in environment variables",
@@ -533,6 +532,7 @@ def main():
         )
         sys.exit(1)
 
+    # Exit if we don't have GitLab API Token
     if not gitlab_token:
         console.print(
             f"[!] ERROR No GitLab Personal Access Token in environment variables",
@@ -540,9 +540,13 @@ def main():
         )
         sys.exit(1)
 
+    prefix = arguments["Provider"].upper()
+    webhook_url = verify_environment(f"{prefix}_WEBHOOK")
+
+    # Exit if we don't have webhook URL
     if not webhook_url:
         console.print(
-            f"[!] ERROR No webhook URL in environment variables",
+            f"[!] ERROR No webhook URL found in environment variables",
             style="bold red",
         )
         sys.exit(1)
@@ -623,21 +627,6 @@ def main():
     if arguments["Check"]:
         # Read tracker.db and populate all our repositories in memory
         repositories = read_repositories(db_connection_handler)
-
-        if github_ratelimit_response[0] // len(repositories) == 0:
-            console.print(
-                f"[!] WARN - Predicting GitHub rate limits based on remaining requests",
-                style="bold red",
-            )
-            # Process X-RateLimit-Reset epoch timestamp
-            reset_time_epoch = github_ratelimit_response[1]
-
-            # Convert now datetime.datetime object to epoch timestamp with milliseconds, use math.floor to round to nearest second
-            current_time_epoch = math.floor(now.timestamp())
-
-            # Find difference and sleep
-            difference_in_epoch = reset_time_epoch - current_time_epoch
-            time.sleep(difference_in_epoch)
 
         for count, repo in enumerate(
             track(
