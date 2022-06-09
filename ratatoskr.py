@@ -335,47 +335,47 @@ def save_messages(data, filename):
             existing_data = json.load(fh)
     except FileNotFoundError as notfound:
         console.print(
-            f"[!] WARN - Filename {filename} does not exist _will create_: {notfound}",
+            f"[!] WARN - Filename [blue]{filename}[/blue] does not exist [i]will create[/i]: {notfound}",
             style="bold yellow",
         )
-        existing_data = {}
+        existing_data = []
     except IOError as e:
         console.print(
-            f"[!] ERROR - Unable to read file {filename}: {e}", style="bold yellow"
+            f"[!] ERROR - Unable to read file [blue]{filename}[/blue]: {e}",
+            style="bold yellow",
         )
-        existing_data = {}
+        existing_data = []
 
     # Update the dict object with new data passed to function
-    existing_data.update(data)
+    existing_data.append(data)
 
     # Write our merged JSON object to disk in the event we have to resend the messages
     with open(filename, "wt") as fh:
         json.dump(existing_data, fh)
 
-    console.print(f"[!] WARN - Wrote messages to file {filename}", style="bold yellow")
+    console.print(
+        f"[!] WARN - Wrote messages to file [blue]{filename}[/blue]",
+        style="bold yellow",
+    )
 
 
 def send_webhook(message, webhook_url, provider, filename):
     """Send web request to webhook URL"""
 
     # https://docs.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook
-    if "webhook.office.com" in webhook_url or provider == "msteams":
-        # console.print(f'[-] INFO - Webhook receiver appears to be [blue]Microsoft Teams[/blue]')
+    if provider == "msteams":
         data = {"Text": message}
 
     # https://api.slack.com/messaging/webhooks
-    if "hooks.slack.com" in webhook_url or provider == "slack":
-        # console.print(f'[-] INFO - Webhook receiver appears to be [blue]Slack[/blue]')
+    if provider == "slack":
         data = {"text": message}
 
     # https://discord.com/developers/docs/resources/webhook
-    if "discord.com/api/webhooks" in webhook_url or provider == "discord":
-        # console.print(f'[-] INFO - Webhook receiver appears to be [blue]Discord[/blue]')
+    if provider == "discord":
         data = {"content": message}
 
     # https://docs.rocket.chat/guides/administration/admin-panel/integrations
     if provider == "rocketchat":
-        # console.print(f'[-] INFO - Webhook receiver appears to be [blue]Rocket.Chat[/blue]')
         data = {
             "username": "rocket.cat",
             "icon_emoji": ":chipmunk:",
@@ -385,25 +385,19 @@ def send_webhook(message, webhook_url, provider, filename):
     # HTTP POST to our Webhook URL
     r = requests.post(webhook_url, json=data)
 
-    # Verify 200
+    # Verify 200 or 204 (Discord API)
     if r.status_code != 200:
         console.print(
-            f"\n[!] ERROR - Webhook was unsuccessful: {r.text}",
+            f"\n[!] ERROR - Webhook was unsuccessful: {r.status_code} - {r.text}",
             style="bold red",
         )
         # Save messages to disk in event we don't succesfully POST
-        save_messages(data, filename)
+        save_messages(message, filename)
 
         # Return condition and response object
         return (False, r)
 
     if r.status_code == 200:
-        # console.print(
-        #     f"\n[+] INFO - Webhook received successfully",
-        #     style="bold green",
-        # )
-
-        # Return condition and response object
         return (True, r)
 
 
@@ -416,23 +410,32 @@ def parse_arguments():
     # Create mutually exclusive group
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
+        "-l",
         "--load",
         action="store_true",
-        help="Load the repositories to watch into the database",
+        help="load the repositories to watch into the database",
     )
     group.add_argument(
+        "-c",
         "--check",
         action="store_true",
-        help="Check for new repository releases and commits",
+        help="check for new repository releases and commits",
     )
     group.add_argument(
-        "--version", action="version", version=f"{__prog__} {__version__}"
+        "-v", "--version", action="version", version=f"{__prog__} {__version__}"
+    )
+    group.add_argument(
+        "-e",
+        "--examples",
+        action="store_true",
+        help="display usage examples and exit",
     )
     parser.add_argument(
+        "-p",
         "--provider",
         type=str,
         choices=["rocketchat", "discord", "msteams", "slack"],
-        help="Provider to use; required for webhook payload formatting",
+        help="provider to use; required with --check",
     )
 
     # Parse our arguments into internal variables
@@ -445,7 +448,7 @@ def parse_arguments():
 
     if provider is None:
         console.print(
-            f"[!] ERROR Chat provider was not provided by [green]--provider[/green] argument!",
+            f"[!] ERROR - Chat provider was not provided by [green]--provider[/green] argument!",
             style="bold red",
         )
         sys.exit(1)
@@ -460,7 +463,7 @@ def prepare_database(filename):
     p = Path(filename)
 
     if p.exists():
-        console.print(f"[+] INFO {filename} exists", style="bold green")
+        console.print(f"[+] INFO - [blue]{filename}[/blue] exists", style="bold green")
         # DB Connection
         con = sl.connect(filename, timeout=5)
 
@@ -470,14 +473,14 @@ def prepare_database(filename):
         # If the table already exists in the tracker.db file
         if confirm_result:
             console.print(
-                f"[+] INFO Tracker database is already prepared", style="bold yellow"
+                f"[+] INFO - Tracker database is already prepared", style="bold green"
             )
             return (True, con)
 
         # If the table does not exist, create it!
         if not confirm_result:
             console.print(
-                f"[+] INFO Preparing database tables in [blue]{filename}[/blue] file..",
+                f"[+] INFO - Preparing database tables in [blue]{filename}[/blue] file..",
                 style="bold green",
             )
 
@@ -487,7 +490,7 @@ def prepare_database(filename):
                 return (True, con)
             except sl.OperationalError as e:
                 console.print(
-                    f"[!] ERROR database has already been initialized!",
+                    f"[!] ERROR - Database has already been initialized!",
                     style="bold red",
                 )
                 console.print(f"{e}")
@@ -496,7 +499,8 @@ def prepare_database(filename):
     # If the file does not exist, create it and prepare it
     if not p.exists():
         console.print(
-            f"[!] WARN {filename} does not exist, creating..", style="bold yellow"
+            f"[!] WARN - [blue]{filename}[/blue] does not exist, creating..",
+            style="bold yellow",
         )
         # DB Connection
         con = sl.connect(filename, timeout=5)
@@ -507,7 +511,7 @@ def prepare_database(filename):
             return (True, con)
         except sl.OperationalError as e:
             console.print(
-                f"[!] ERROR database has already been initialized!",
+                f"[!] ERROR - Database has already been initialized!",
                 style="bold red",
             )
             console.print(f"{e}")
@@ -527,7 +531,7 @@ def main():
     # Exit if we don't have GitHub API token
     if not github_token:
         console.print(
-            f"[!] ERROR No GitHub Personal Access Token in environment variables",
+            f"[!] ERROR - No GitHub Personal Access Token in environment variables",
             style="bold red",
         )
         sys.exit(1)
@@ -535,7 +539,7 @@ def main():
     # Exit if we don't have GitLab API Token
     if not gitlab_token:
         console.print(
-            f"[!] ERROR No GitLab Personal Access Token in environment variables",
+            f"[!] ERROR - No GitLab Personal Access Token in environment variables",
             style="bold red",
         )
         sys.exit(1)
@@ -546,7 +550,7 @@ def main():
     # Exit if we don't have webhook URL
     if not webhook_url:
         console.print(
-            f"[!] ERROR No webhook URL found in environment variables",
+            f"[!] ERROR - No webhook URL found in environment variables",
             style="bold red",
         )
         sys.exit(1)
@@ -576,7 +580,7 @@ def main():
 
     # Ensure we got True from previous function call
     if not db_prep_result[0]:
-        console.print(f"[!] ERROR preparing database!", style="bold red")
+        console.print(f"[!] ERROR - Preparing database!", style="bold red")
         sys.exit(1)
 
     # Use a friendly name for our connection object
@@ -613,10 +617,6 @@ def main():
                 pass
             # If it has not been inserted, load it in
             elif not confirmation:
-                # console.print(
-                #     f"[+] INFO repo {repo[1]} is not tracked...adding to tracker",
-                #     style="bold green",
-                # )
                 # Prepare our SQL insert
                 newrepo = [repo[0], repo[1], dt_formatted, repo[2]]
                 # Perform insert by passing our DB handler and new repository
@@ -669,7 +669,7 @@ def main():
                 if response[1].status_code == 429:
                     delay_time = 60
                     console.print(
-                        f"Too many requests, backing off for [blue]{delay_time}[/blue] seconds"
+                        f"[!] WARN - Too many requests, backing off for [blue]{delay_time}[/blue] seconds"
                     )
                     time.sleep(delay_time)
                     response = send_webhook(
@@ -696,7 +696,7 @@ def main():
                 if response[1].status_code == 429:
                     delay_time = 60
                     console.print(
-                        f"Too many requests, backing off for [blue]{delay_time}[/blue] seconds"
+                        f"[!] WARN - Too many requests, backing off for [blue]{delay_time}[/blue] seconds"
                     )
                     time.sleep(delay_time)
                     response = send_webhook(
