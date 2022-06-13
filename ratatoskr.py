@@ -385,10 +385,11 @@ def send_webhook(message, webhook_url, provider, filename):
     # HTTP POST to our Webhook URL
     r = requests.post(webhook_url, json=data)
 
-    # Verify 200 or 204 (Discord API)
-    if r.status_code != 200:
+    # Verify successful status code via .ok method on response object
+    # Most APIs return 200, Discord returns 204
+    if not r.ok:
         console.print(
-            f"\n[!] ERROR - Webhook was unsuccessful: {r.status_code} - {r.text}",
+            f"\n[!] ERROR - Webhook was unsuccessful status code is {r.status_code}: {r.text}",
             style="bold red",
         )
         # Save messages to disk in event we don't succesfully POST
@@ -397,7 +398,7 @@ def send_webhook(message, webhook_url, provider, filename):
         # Return condition and response object
         return (False, r)
 
-    if r.status_code == 200:
+    if r.ok:
         return (True, r)
 
 
