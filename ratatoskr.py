@@ -13,6 +13,7 @@ from rich.console import Console
 from rich.progress import track
 from requests_html import HTMLSession
 from datetime import datetime
+from pathlib import Path
 from __init__ import __version__
 from __init__ import __prog__
 
@@ -29,18 +30,13 @@ console = Console()
 # Init HTML Session
 htmlsession = HTMLSession()
 
-# DB Connection
-con = sl.connect("tracker.db", timeout=5)
-
-# Create filename to save messages if RC is down
+# Create filename to save messages if provider is down
 # Format YYYY-MM-DD
 dt_formatted_filename = now.strftime("%Y-%m-%d")
 # Get Process ID
 pid = os.getpid()
 # Construct filename to save message state
 filename = f"ratatoskr_{dt_formatted_filename}_{pid}.json"
-# Inform user of constructed filename
-console.print(f"[+] INFO - Filename for saving messages is: {filename}")
 
 
 def verify_environment(environment_variable):
@@ -256,7 +252,7 @@ def confirm_table(connection):
         if len(data) == 0:
             return None
         else:
-            console.print(f"[!] INFO - Table already exists", style="bold yellow")
+            console.print(f"[+] INFO - Table already exists", style="bold green")
             return True
 
 
@@ -337,101 +333,225 @@ def save_messages(data, filename):
     try:
         with open(filename, "rt") as fh:
             existing_data = json.load(fh)
-    except IOError:
-        console.print(f"[!] ERROR - Unable to read file {filename}", style="bold red")
-        existing_data = {}
+    except FileNotFoundError as notfound:
+        console.print(
+            f"[!] WARN - Filename [blue]{filename}[/blue] does not exist [i]will create[/i]: {notfound}",
+            style="bold yellow",
+        )
+        existing_data = []
+    except IOError as e:
+        console.print(
+            f"[!] ERROR - Unable to read file [blue]{filename}[/blue]: {e}",
+            style="bold yellow",
+        )
+        existing_data = []
 
     # Update the dict object with new data passed to function
-    existing_data.update(data)
+    existing_data.append(data)
 
+    # Write our merged JSON object to disk in the event we have to resend the messages
     with open(filename, "wt") as fh:
         json.dump(existing_data, fh)
 
-    console.print(f"[!] WARN - Wrote messages to file {filename}", style="bold yellow")
+    console.print(
+        f"[!] WARN - Wrote messages to file [blue]{filename}[/blue]",
+        style="bold yellow",
+    )
 
 
-def rocket_alert(message, webhook_url):
-    """Generate rocketchat webhook alert"""
+def send_webhook(message, webhook_url, provider, filename):
+    """Send web request to webhook URL"""
 
-    data = {
-        "username": "rocket.cat",
-        "icon_emoji": ":chipmunk:",
-        "attachments": [{"text": message, "color": "#764FA5"}],
-    }
+    # https://docs.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook
+    if provider == "msteams":
+        data = {"Text": message}
+
+    # https://api.slack.com/messaging/webhooks
+    if provider == "slack":
+        data = {"text": message}
+
+    # https://discord.com/developers/docs/resources/webhook
+    if provider == "discord":
+        data = {"content": message}
+
+    # https://docs.rocket.chat/guides/administration/admin-panel/integrations
+    if provider == "rocketchat":
+        data = {
+            "username": "rocket.cat",
+            "icon_emoji": ":chipmunk:",
+            "attachments": [{"text": message, "color": "#764FA5"}],
+        }
 
     # HTTP POST to our Webhook URL
     r = requests.post(webhook_url, json=data)
 
-    # Verify 200
-    if r.status_code != 200:
+    # Verify successful status code via .ok method on response object
+    # Most APIs return 200, Discord returns 204
+    if not r.ok:
         console.print(
-            f"[!] ERROR - POST request to RocketChat was unsuccessful: {r}",
+            f"\n[!] ERROR - Webhook was unsuccessful status code is {r.status_code}: {r.text}",
             style="bold red",
         )
-        save_messages(data, filename)
+        # Save messages to disk in event we don't succesfully POST
+        save_messages(message, filename)
+
+        # Return condition and response object
         return (False, r)
 
-    if r.status_code == 200:
-        console.print(
-            f"[+] INFO - Webhook successfully POSTed to [blue]{webhook_url}[/blue]",
-            style="bold green",
-        )
+    if r.ok:
         return (True, r)
 
 
-def main():
-    """Main function"""
+def parse_arguments():
+    """Parse command-line arguments"""
 
+    # Define parser
     parser = argparse.ArgumentParser()
+
+    # Create mutually exclusive group
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
-        "--prep", action="store_true", help="Initialize the sqlite3 database"
-    )
-    group.add_argument(
+        "-l",
         "--load",
         action="store_true",
-        help="Load the repositories to watch into the database",
+        help="load the repositories to watch into the database",
     )
     group.add_argument(
+        "-c",
         "--check",
         action="store_true",
-        help="Check for new repository releases and commits",
+        help="check for new repository releases and commits",
     )
     group.add_argument(
-        "--version", action="version", version=f"{__prog__} {__version__}"
+        "-v", "--version", action="version", version=f"{__prog__} {__version__}"
+    )
+    group.add_argument(
+        "-e",
+        "--examples",
+        action="store_true",
+        help="display usage examples and exit",
+    )
+    parser.add_argument(
+        "-p",
+        "--provider",
+        type=str,
+        choices=["rocketchat", "discord", "msteams", "slack"],
+        help="provider to use; required with --check",
     )
 
     # Parse our arguments into internal variables
     args = parser.parse_args()
 
     # Cleaner variable names
-    prep = args.prep
     load = args.load
     check = args.check
+    provider = args.provider
+
+    if provider is None:
+        console.print(
+            f"[!] ERROR - Chat provider was not provided by [green]--provider[/green] argument!",
+            style="bold red",
+        )
+        sys.exit(1)
+
+    return {"Load": load, "Check": check, "Provider": provider}
+
+
+def prepare_database(filename):
+    """Prepare the database"""
+
+    # Check if tracker.db file exists or not
+    p = Path(filename)
+
+    if p.exists():
+        console.print(f"[+] INFO - [blue]{filename}[/blue] exists", style="bold green")
+        # DB Connection
+        con = sl.connect(filename, timeout=5)
+
+        # Confirm the table exists, use the connection object
+        confirm_result = confirm_table(con)
+
+        # If the table already exists in the tracker.db file
+        if confirm_result:
+            console.print(
+                f"[+] INFO - Tracker database is already prepared", style="bold green"
+            )
+            return (True, con)
+
+        # If the table does not exist, create it!
+        if not confirm_result:
+            console.print(
+                f"[+] INFO - Preparing database tables in [blue]{filename}[/blue] file..",
+                style="bold green",
+            )
+
+            # We want to try and handle the sqlite OperationalError condition at least
+            try:
+                bootstrap_db(con)
+                return (True, con)
+            except sl.OperationalError as e:
+                console.print(
+                    f"[!] ERROR - Database has already been initialized!",
+                    style="bold red",
+                )
+                console.print(f"{e}")
+                return (False, con)
+
+    # If the file does not exist, create it and prepare it
+    if not p.exists():
+        console.print(
+            f"[!] WARN - [blue]{filename}[/blue] does not exist, creating..",
+            style="bold yellow",
+        )
+        # DB Connection
+        con = sl.connect(filename, timeout=5)
+
+        # We want to try and handle the sqlite OperationalError condition at least
+        try:
+            bootstrap_db(con)
+            return (True, con)
+        except sl.OperationalError as e:
+            console.print(
+                f"[!] ERROR - Database has already been initialized!",
+                style="bold red",
+            )
+            console.print(f"{e}")
+            return (False, con)
+
+
+def main():
+    """Main function"""
+
+    # High-level function to parse arguments
+    arguments = parse_arguments()
 
     # Verify tokens and webhook
     github_token = verify_environment("GITHUB_TOKEN")
     gitlab_token = verify_environment("GITLAB_TOKEN")
-    webhook_url = verify_environment("ROCKETCHAT_WEBHOOK")
 
-    # Exit if we don't have an API token
+    # Exit if we don't have GitHub API token
     if not github_token:
         console.print(
-            f"[!] ERROR No GitHub OAuth Token in environment variables",
+            f"[!] ERROR - No GitHub Personal Access Token in environment variables",
             style="bold red",
         )
         sys.exit(1)
 
+    # Exit if we don't have GitLab API Token
     if not gitlab_token:
         console.print(
-            f"[!] ERROR No GitLab OAuth Token in environment variables",
+            f"[!] ERROR - No GitLab Personal Access Token in environment variables",
             style="bold red",
         )
         sys.exit(1)
 
+    prefix = arguments["Provider"].upper()
+    webhook_url = verify_environment(f"{prefix}_WEBHOOK")
+
+    # Exit if we don't have webhook URL
     if not webhook_url:
         console.print(
-            f"[!] ERROR No Rocket.Chat webhook URL in environment variables",
+            f"[!] ERROR - No webhook URL found in environment variables",
             style="bold red",
         )
         sys.exit(1)
@@ -457,28 +577,15 @@ def main():
     s_gitlab.headers.update(gitlab_custom_headers)
 
     # Prepare the tracker.db file before loading data
-    if prep:
-        confirm_result = confirm_table(con)
-        if confirm_result:
-            console.print(
-                f"[!] Tracker database is already prepared", style="bold yellow"
-            )
-            sys.exit(1)
-        else:
-            console.print(
-                f"[+] INFO Preparing database tables in tracker.db file..",
-                style="bold green",
-            )
-            try:
-                bootstrap_db(con)
-                sys.exit(0)
-            except sl.OperationalError as e:
-                console.print(
-                    f"[!] ERROR database has already been initialized!",
-                    style="bold red",
-                )
-                console.print(f"{e}")
-                sys.exit(1)
+    db_prep_result = prepare_database("tracker.db")
+
+    # Ensure we got True from previous function call
+    if not db_prep_result[0]:
+        console.print(f"[!] ERROR - Preparing database!", style="bold red")
+        sys.exit(1)
+
+    # Use a friendly name for our connection object
+    db_connection_handler = db_prep_result[1]
 
     # Check rate limits
     github_ratelimit_response = get_ratelimit_status(s_github)
@@ -487,45 +594,40 @@ def main():
         console.print(f"[!] ERROR Unable to confirm rate limits", style="bold red")
         sys.exit(1)
 
-    if load:
+    # If user provided --load argument, read CSV and load into tracker
+    if arguments["Load"]:
+        # Extract all the URLs from the first column in the CSV
         repositories = get_urls("GitHub_Tools_List.csv")
+
         console.print(
             f"[+] Loading repositories to monitor into tracker..", style="bold green"
         )
+
+        # We enumerate over all repository URLs
         for repo in track(
-            sequence=repositories, description="Loading...", update_period=1.0
+            sequence=repositories,
+            description="Loading...",
+            update_period=1.0,
+            auto_refresh=False,
         ):
             # Check if already tracking in database
-            confirmation = confirm_repo(con, repo)
+            confirmation = confirm_repo(db_connection_handler, repo)
+
+            # Verify that repository has been inserted into tracker
             if confirmation:
                 pass
+            # If it has not been inserted, load it in
             elif not confirmation:
-                console.print(
-                    f"[+] INFO repo {repo[1]} is not tracked...adding to tracker",
-                    style="bold green",
-                )
+                # Prepare our SQL insert
                 newrepo = [repo[0], repo[1], dt_formatted, repo[2]]
-                insert_repo(con, newrepo)
+                # Perform insert by passing our DB handler and new repository
+                insert_repo(db_connection_handler, newrepo)
         sys.exit(0)
 
-    if check:
+    # If user provided --check argument, read all repos from DB
+    if arguments["Check"]:
         # Read tracker.db and populate all our repositories in memory
-        repositories = read_repositories(con)
-
-        if github_ratelimit_response[0] // len(repositories) == 0:
-            console.print(
-                f"[!] WARN - Predicting GitHub rate limits based on remaining requests",
-                style="bold red",
-            )
-            # Process X-RateLimit-Reset epoch timestamp
-            reset_time_epoch = github_ratelimit_response[1]
-
-            # Convert now datetime.datetime object to epoch timestamp with milliseconds, use math.floor to round to nearest second
-            current_time_epoch = math.floor(now.timestamp())
-
-            # Find difference and sleep
-            difference_in_epoch = reset_time_epoch - current_time_epoch
-            time.sleep(difference_in_epoch)
+        repositories = read_repositories(db_connection_handler)
 
         for count, repo in enumerate(
             track(
@@ -556,18 +658,24 @@ def main():
 
                 # Update the database
                 update = [commit, release, dt_formatted, repo[0], repo[1], repo[5]]
-                update_tracker(con, update)
+                update_tracker(db_connection_handler, update)
 
-                # Send notification to Rocket.Chat webhook
+                # Send notification to webhook
                 message = f"New release for repository {repo[1]}: {release}"
-                response = rocket_alert(message, webhook_url)
+                response = send_webhook(
+                    message, webhook_url, arguments["Provider"], filename
+                )
 
                 # If response code is 429, backoff
                 if response[1].status_code == 429:
                     delay_time = 60
-                    console.print(f"Too many requests, backing off for {delay_time}")
+                    console.print(
+                        f"[!] WARN - Too many requests, backing off for [blue]{delay_time}[/blue] seconds"
+                    )
                     time.sleep(delay_time)
-                    response = rocket_alert(message, webhook_url)
+                    response = send_webhook(
+                        message, webhook_url, arguments["Provider"], filename
+                    )
 
             if repo[3] != commit and commit is not None:
                 console.print(
@@ -577,20 +685,24 @@ def main():
 
                 # Update the database
                 update = [commit, release, dt_formatted, repo[0], repo[1], repo[5]]
-                update_tracker(con, update)
+                update_tracker(db_connection_handler, update)
 
-                # Send notification to Rocket.Chat webhook
+                # Send notification to webhook
                 message = f"New commit for repository {repo[1]}: {commit}"
-                response = rocket_alert(message, webhook_url)
+                response = send_webhook(
+                    message, webhook_url, arguments["Provider"], filename
+                )
 
                 # If response code is 429, backoff
                 if response[1].status_code == 429:
                     delay_time = 60
                     console.print(
-                        f"Too many requests, backing off for [blue]{delay_time}[/blue]"
+                        f"[!] WARN - Too many requests, backing off for [blue]{delay_time}[/blue] seconds"
                     )
                     time.sleep(delay_time)
-                    response = rocket_alert(message, webhook_url)
+                    response = send_webhook(
+                        message, webhook_url, arguments["Provider"], filename
+                    )
 
 
 if __name__ == "__main__":
