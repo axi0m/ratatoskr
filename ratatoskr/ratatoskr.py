@@ -706,4 +706,5 @@ def main():
 
 
 if __name__ == "__main__":
+    console.print(f" :chipmunk:  ~ Ratatoskr the Norse Squirrel God ~ :chipmunk:")
     main()
