@@ -224,4 +224,9 @@ cython_debug/
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,macos,python
 
 # Custom
+
+# Ignore tracker.db, shouldn't be stored as source
 tracker.db
+
+# Ignore .env, stores sensitive environment variables
+.env
