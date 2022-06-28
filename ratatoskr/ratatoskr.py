@@ -9,11 +9,12 @@ import requests
 import sqlite3 as sl
 import sys
 import time
+from datetime import datetime
+from dotenv import load_dotenv
+from pathlib import Path
 from rich.console import Console
 from rich.progress import track
 from requests_html import HTMLSession
-from datetime import datetime
-from pathlib import Path
 from __init__ import __version__
 from __init__ import __prog__
 
@@ -26,6 +27,9 @@ USERAGENT = f"ratatoskr-{__version__}"
 
 # Init rich console
 console = Console()
+
+# Load .env file
+load_dotenv()
 
 # Init HTML Session
 htmlsession = HTMLSession()
