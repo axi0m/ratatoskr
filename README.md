@@ -3,10 +3,14 @@
 [![Code Style Black](https://img.shields.io/badge/code%20style-black-000000.svg?style=flat-square)](https://github.com/psf/black)
 [![Updates](https://pyup.io/repos/github/axi0m/ratatoskr/shield.svg?style=flat-square)](https://pyup.io/repos/github/axi0m/ratatoskr/)
 ![GitHub Pipenv locked Python version](https://img.shields.io/github/pipenv/locked/python-version/axi0m/ratatoskr?style=flat-square)
+[![Python Build with poetry](https://github.com/axi0m/ratatoskr/actions/workflows/build-poetry.yml/badge.svg?style=flat-square)](https://github.com/axi0m/ratatoskr/actions/workflows/build-poetry.yml)
+[![Python Build with pipenv](https://github.com/axi0m/ratatoskr/actions/workflows/build-pipenv.yml/badge.svg?style=flat-square)](https://github.com/axi0m/ratatoskr/actions/workflows/build-pipenv.yml)
+[![Python Build with pip](https://github.com/axi0m/ratatoskr/actions/workflows/build-pip.yml/badge.svg?style=flat-square)](https://github.com/axi0m/ratatoskr/actions/workflows/build-pip.yml)
+[![flake8 lint](https://github.com/axi0m/ratatoskr/actions/workflows/flake8-lint.yml/badge.svg?style=flat-square)](https://github.com/axi0m/ratatoskr/actions/workflows/flake8-lint.yml)
 
 # Ratatoskr #
 
-![squirrel-image](images/squirrel.png)
+![squirrel-image](images/noun-squirrel-1092288.svg)
 
 [What is a ratatoskr?](https://en.wikipedia.org/wiki/Ratatoskr)
 
@@ -55,6 +59,12 @@ pipenv install
 pip install --user requirements.txt
 ```
 
+### Using poetry ###
+
+```shell
+poetry install
+```
+
 ## Usage ##
 
 ### Environment and Setup ###
@@ -64,7 +74,8 @@ pip install --user requirements.txt
 
 1. Ensure `pipenv` is installed, in your path, and you've got a GitHub Personal Access Token and GitLab Personal Access Token exported to environmental variables `GITHUB_TOKEN` and `GITLAB_TOKEN` respectively.
 2. Ensure a reference file called `GitHub_Tools_List.csv` is in the current working directory with the URLs of the repositories you want to monitor. Sample is provided here in the repository.
-3. Lastly you must export one of the following environment variables depending on your chat application.
+3. Lastly you must export one of the following environment variables depending on your chat application. Alternatively for 1. and 3. you could create your own `.env` file in the directory and populate the required
+variables, see the `.env-template` as an example.
 
    - `ROCKETCHAT_WEBHOOK`
    - `MSTEAMS_WEBHOOK`
@@ -102,13 +113,13 @@ pipenv run python3 ratatoskr.py --load
 
 ### First Run ###
 
-You will want to have a Personal Access Token for GitHub and GitLab, and the webhook exported to environment variables before attempting to load or run the script.
+You will want to have a Personal Access Token for GitHub and GitLab, and the webhook exported to environment variables before attempting to load or run the script (assuming you are not using the `.env` file).
 
 ```shell
 export GITHUB_TOKEN='REDACTED'
 export GITLAB_TOKEN='REDACTED'
 export ROCKETCHAT_WEBHOOK='REDACTED'
-pipenv run python3 ratatoskr.py --check
+pipenv run python3 ratatoskr.py -c -p discord
 ```
 
 ![check](images/check_output.png)
