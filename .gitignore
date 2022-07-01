@@ -230,3 +230,6 @@ tracker.db
 
 # Ignore .env, stores sensitive environment variables
 .env
+
+# Ignore pyenv files
+.python-version
