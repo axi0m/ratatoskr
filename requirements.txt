@@ -121,9 +121,9 @@ python-dotenv==0.20.0; python_version >= "3.5" \
 requests-html==0.10.0; python_full_version >= "3.6.0" \
     --hash=sha256:7e929ecfed95fb1d0994bb368295d6d7c4d06b03fcb900c33d7d0b17e6003947 \
     --hash=sha256:cb8a78cf829c4eca9d6233f28524f65dd2bfaafb4bdbbc407f0a0b8f487df6e2
-requests==2.28.0; python_version >= "3.7" and python_version < "4" \
-    --hash=sha256:bc7861137fbce630f17b03d3ad02ad0bf978c844f3536d0edda6499dafce2b6f \
-    --hash=sha256:d568723a7ebd25875d8d1eaf5dfa068cd2fc8194b2e483d7b1f7c81918dbec6b
+requests==2.28.1; python_version >= "3.7" and python_version < "4" \
+    --hash=sha256:7c5599b102feddaa661c826c56ab4fee28bfd17f5abca1ebbe3e7f19d7c97983 \
+    --hash=sha256:8fefa2a1a1365bf5520aac41836fbee479da67864514bdb821f31ce07ce65349
 rich==12.4.4; python_full_version >= "3.6.3" and python_full_version < "4.0.0" \
     --hash=sha256:d2bbd99c320a2532ac71ff6a3164867884357da3e3301f0240090c5d2fdac7ec \
     --hash=sha256:4c586de507202505346f3e32d1363eb9ed6932f0c2f63184dea88983ff4971e2
