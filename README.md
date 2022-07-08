@@ -10,7 +10,7 @@
 
 # Ratatoskr #
 
-![squirrel-image](images/noun-squirrel-1092288.svg)
+![squirrel-image](images/noun-squirrel-1092288_512x512.png)
 
 [What is a ratatoskr?](https://en.wikipedia.org/wiki/Ratatoskr)
 

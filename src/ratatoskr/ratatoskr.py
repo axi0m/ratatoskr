@@ -101,7 +101,11 @@ def get_urls(filename):
 
 
 def get_gitlab_projectid(session, repository):
-    """Parse the Project ID from a given GitLab repository"""
+    """Parse the Project ID from a given GitLab project page
+
+    session - A request-html HTMLSession object
+    repository - A tuple of GitLab username and project/repository name
+    """
 
     # Expects HTMLSession() object not requests Session() object
     query_url = f"https://gitlab.com/{repository[0]}/{repository[1]}"
@@ -118,7 +122,11 @@ def get_gitlab_projectid(session, repository):
 
 
 def get_gitlab_latest_release(session, projectid):
-    """Get latest release for given GitLab public project ID"""
+    """Get latest release for given GitLab public project ID
+
+    session - A requests Session object
+    projectid - A gitlab project ID as string
+    """
 
     query_url = f"https://gitlab.com/api/v4/projects/{projectid}/releases"
     response = session.get(query_url, timeout=5)
@@ -149,7 +157,11 @@ def get_gitlab_latest_release(session, projectid):
 
 
 def get_gitlab_latest_commit(session, projectid):
-    """Get latest commit for given GitLab public project ID"""
+    """Get latest commit for given GitLab public project ID
+
+    session - A requests Session object
+    projectid - A gitlab project ID as string
+    """
 
     query_url = f"https://gitlab.com/api/v4/projects/{projectid}/repository/commits"
     response = session.get(query_url, timeout=5)
@@ -171,7 +183,11 @@ def get_gitlab_latest_commit(session, projectid):
 
 
 def get_latest_release(session, repository):
-    """Get the latest release for given repo in ('Owner', 'Repo', 'github') format"""
+    """Get the latest GitHub release for given repository
+
+    session - A requests Session object
+    repository - A tuple like ('Owner', 'Repo', 'github')
+    """
 
     # Sample input ('outflanknl', 'RedELK', 'github')
 
@@ -207,7 +223,11 @@ def get_latest_commit(session, repository):
 
 
 def update_tracker(connection, update):
-    """Update tracker DB with the latest release and commit"""
+    """Update tracker DB with the latest release and commit
+
+    connection - SQLite DB Connection Object
+    update - List of commit, release, datetime, GitHub username, repo name, and whether GitLab or GitHub
+    """
 
     # update_object = [commit, release, dt_formatted, repo[0], repo[1], repo[2]]
     # sample SQL entry = its-a-feature|Mythic|0|https://github.com/its-a-feature/Mythic/commit/75a46ef1c06e58ffaed2b036c3e4adf67b72bbc4|12/05/2021 12:37:32|github
@@ -228,7 +248,11 @@ def update_tracker(connection, update):
 
 
 def insert_repo(connection, newrepo):
-    """Insert newly identified repository to track"""
+    """Insert newly identified repository to track
+
+    connection - SQLite DB Connection Object
+    newrepo - List of user, repo URL, last updated timestamp, GitHub or GitLab
+    """
 
     # newrepo = [repo[0], repo[1], dt_formatted, repo[2]]
 
@@ -247,7 +271,10 @@ def insert_repo(connection, newrepo):
 
 
 def confirm_table(connection):
-    """Verify if repo table has been created"""
+    """Verify if repo table has been created
+
+    connection - SQLite DB Connection Object
+    """
 
     cursor = connection.cursor()
     with connection:
@@ -261,7 +288,11 @@ def confirm_table(connection):
 
 
 def delete_repo(connection, repo):
-    """Delete repository from tracker db"""
+    """Delete repository from tracker db
+
+    connection - SQLite DB Connection Object
+    repo - List of owner and repo
+    """
 
     sql = "DELETE FROM repo WHERE owner = ? AND repo = ?"
 
@@ -277,14 +308,18 @@ def delete_repo(connection, repo):
         sys.exit(1)
 
 
-def confirm_repo(connection, repository):
-    """Verify if the owner and repository name is already setup in the tracker database"""
+def confirm_repo(connection, repo):
+    """Verify if the owner and repository name is already setup in the tracker database
+
+    connection - SQLite DB Connection Object
+    repo - List of owner and repo
+    """
 
     cursor = connection.cursor()
     with connection:
         cursor.execute(
             "select * from repo WHERE owner = ? AND repo = ?",
-            [repository[0], repository[1]],
+            [repo[0], repo[1]],
         )
         data = cursor.fetchall()
         if len(data) == 0:
@@ -294,7 +329,10 @@ def confirm_repo(connection, repository):
 
 
 def bootstrap_db(connection):
-    """Bootstrap sqlite3 db with REPO table"""
+    """Bootstrap sqlite3 db with REPO table
+
+    connection - SQLite DB Connection Object
+    """
 
     try:
         cursor = connection.cursor()
@@ -309,7 +347,10 @@ def bootstrap_db(connection):
 
 
 def dump_table(connection):
-    """Print the tracker database"""
+    """Print the tracker database
+
+    connection - SQLite DB Connection Object
+    """
 
     cursor = connection.cursor()
     with connection:
@@ -319,7 +360,10 @@ def dump_table(connection):
 
 
 def read_repositories(connection):
-    """Return all repositories in the tracker database"""
+    """Return all repositories in the tracker database
+
+    connection - SQLite DB Connection Object
+    """
 
     repositories = []
 
@@ -332,7 +376,11 @@ def read_repositories(connection):
 
 
 def save_messages(data, filename):
-    """Write messages as JSON to disk in the event webhook is unsuccessful"""
+    """Write messages as JSON to disk in the event webhook is unsuccessful
+
+    data - JSON object
+    filename - Filname to write to disk
+    """
 
     try:
         with open(filename, "rt") as fh:
@@ -364,7 +412,13 @@ def save_messages(data, filename):
 
 
 def send_webhook(message, webhook_url, provider, filename):
-    """Send web request to webhook URL"""
+    """Send web request to webhook URL
+
+    message - Message text for chat notification
+    webhook_url - Webhook URL to send request to
+    provider - Webhook provider to format message
+    filename - Filename to write to disk in event of failure
+    """
 
     # https://docs.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook
     if provider == "msteams":
@@ -462,7 +516,10 @@ def parse_arguments():
 
 
 def prepare_database(filename):
-    """Prepare the database"""
+    """Prepare the database
+
+    filename - SQLite database filename to track repos
+    """
 
     # Check if tracker.db file exists or not
     p = Path(filename)
@@ -526,6 +583,9 @@ def prepare_database(filename):
 def main():
     """Main function"""
 
+    # Print a pretty header to console
+    console.print(f" :chipmunk:  ~ Ratatoskr the Norse Squirrel God ~ :chipmunk:")
+
     # High-level function to parse arguments
     arguments = parse_arguments()
 
@@ -549,7 +609,10 @@ def main():
         )
         sys.exit(1)
 
+    # Parse provider and format for env check
     prefix = arguments["Provider"].upper()
+
+    # Verify that our provider webhook is in the environment
     webhook_url = verify_environment(f"{prefix}_WEBHOOK")
 
     # Exit if we don't have webhook URL
@@ -710,5 +773,4 @@ def main():
 
 
 if __name__ == "__main__":
-    console.print(f" :chipmunk:  ~ Ratatoskr the Norse Squirrel God ~ :chipmunk:")
     main()
