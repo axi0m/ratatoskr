@@ -8,7 +8,6 @@ pytest = "*"
 
 [packages]
 requests = "*"
-requests-html = "*"
 rich = "*"
 xlrd = "*"
 python-dotenv = "*"
