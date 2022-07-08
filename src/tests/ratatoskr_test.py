@@ -1,11 +1,7 @@
 import pytest
-import sys
-from .. import ratatoskr
-
-print(ratatoskr.__path__)
-print(ratatoskr.verify_environment("GITHUB_TOKEN"))
-token = verify_environment("GITHUB_TOKEN")
+from ratatoskr import verify_environment
 
 
 def test_verify_environment(token):
+    token = verify_environment("GITHUB_TOKEN")
     assert isinstance(token, str)
