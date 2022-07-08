@@ -3,18 +3,17 @@
 import argparse
 import csv
 import json
-import math
 import os
 import requests
 import sqlite3 as sl
 import sys
 import time
+import urllib.parse
 from datetime import datetime
 from dotenv import load_dotenv
 from pathlib import Path
 from rich.console import Console
 from rich.progress import track
-from requests_html import HTMLSession
 from __init__ import __version__
 from __init__ import __prog__
 
@@ -30,9 +29,6 @@ console = Console()
 
 # Load .env file
 load_dotenv()
-
-# Init HTML Session
-htmlsession = HTMLSession()
 
 # Create filename to save messages if provider is down
 # Format YYYY-MM-DD
@@ -100,35 +96,16 @@ def get_urls(filename):
         return repositories
 
 
-def get_gitlab_projectid(session, repository):
-    """Parse the Project ID from a given GitLab project page
-
-    session - A request-html HTMLSession object
-    repository - A tuple of GitLab username and project/repository name
-    """
-
-    # Expects HTMLSession() object not requests Session() object
-    query_url = f"https://gitlab.com/{repository[0]}/{repository[1]}"
-    response = session.get(query_url, timeout=5)
-
-    if response.status_code == 200:
-        # Isolate the proper CSS Element and extract value attribute
-        project_temp = response.html.find("#project_id")
-        projectid = project_temp[0].attrs["value"]
-        return projectid
-
-    if response.status_code != 200:
-        return None
-
-
-def get_gitlab_latest_release(session, projectid):
-    """Get latest release for given GitLab public project ID
+def get_gitlab_latest_release(session, repository):
+    """Get latest release for given GitLab public project
 
     session - A requests Session object
-    projectid - A gitlab project ID as string
+    repository - A tuple like ('Owner', 'Repo', 'gitlab')
     """
 
-    query_url = f"https://gitlab.com/api/v4/projects/{projectid}/releases"
+    # GitLab API will take URL-encoded namespace/project URI component
+    project = urllib.parse.quote_plus(f"{repository[0]}/{repository[1]}")
+    query_url = f"https://gitlab.com/api/v4/projects/{project}/releases"
     response = session.get(query_url, timeout=5)
 
     if "json" in response.headers.get("Content-Type"):
@@ -136,14 +113,14 @@ def get_gitlab_latest_release(session, projectid):
 
         if response_json == [] and response.status_code == 200:
             console.print(
-                f"\n[!] INFO - No release found for project ID {projectid}",
+                f"\n[!] INFO - No release found for project {repository[0]}/{repository[1]}",
                 style="bold yellow",
             )
             return None
 
     if response.status_code == 404:
         console.print(
-            f"[!] WARN - Project {projectid} was not found at {query_url} be sure to confirm the URL",
+            f"[!] WARN - Project {repository[0]}/{repository[1]} was not found at {query_url} be sure to confirm the URL",
             style="bold red",
         )
 
@@ -156,14 +133,16 @@ def get_gitlab_latest_release(session, projectid):
         return latest_release
 
 
-def get_gitlab_latest_commit(session, projectid):
-    """Get latest commit for given GitLab public project ID
+def get_gitlab_latest_commit(session, repository):
+    """Get latest commit for given GitLab public project
 
     session - A requests Session object
-    projectid - A gitlab project ID as string
+    repository - A tuple like ('Owner', 'Repo', 'gitlab')
     """
 
-    query_url = f"https://gitlab.com/api/v4/projects/{projectid}/repository/commits"
+    # GitLab API will take URL-encoded namespace/project URI component
+    project = urllib.parse.quote_plus(f"{repository[0]}/{repository[1]}")
+    query_url = f"https://gitlab.com/api/v4/projects/{project}/repository/commits"
     response = session.get(query_url, timeout=5)
 
     if "json" in response.headers.get("Content-Type"):
@@ -171,7 +150,7 @@ def get_gitlab_latest_commit(session, projectid):
 
         if response.status_code == 404:
             console.print(
-                f"[!] WARN - Project {projectid} was not found at {query_url} be sure to confirm the URL",
+                f"[!] WARN - Project {repository[0]}/{repository[1]} was not found at {query_url} be sure to confirm the URL",
                 style="bold red",
             )
 
@@ -709,12 +688,10 @@ def main():
                 # Get latest commit URL
                 commit = get_latest_commit(s_github, repo)
             if repo[5] == "gitlab":
-                # Get project ID from project page via scraping
-                projectid = get_gitlab_projectid(htmlsession, repo)
                 # Get latest release URL
-                release = get_gitlab_latest_release(s_gitlab, projectid)
+                release = get_gitlab_latest_release(s_gitlab, repo)
                 # Get latest commit URL
-                commit = get_gitlab_latest_commit(s_gitlab, projectid)
+                commit = get_gitlab_latest_commit(s_gitlab, repo)
 
             # Check if latest release matches DB
             if repo[2] != release and release is not None:
