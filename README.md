@@ -6,6 +6,7 @@
 [![Python Build with pipenv](https://github.com/axi0m/ratatoskr/actions/workflows/build-pipenv.yml/badge.svg?style=flat-square)](https://github.com/axi0m/ratatoskr/actions/workflows/build-pipenv.yml)
 [![Python Build with pip](https://github.com/axi0m/ratatoskr/actions/workflows/build-pip.yml/badge.svg?style=flat-square)](https://github.com/axi0m/ratatoskr/actions/workflows/build-pip.yml)
 [![flake8 lint](https://github.com/axi0m/ratatoskr/actions/workflows/flake8-lint.yml/badge.svg?style=flat-square)](https://github.com/axi0m/ratatoskr/actions/workflows/flake8-lint.yml)
+[![CodeQL](https://github.com/axi0m/ratatoskr/actions/workflows/codeql.yml/badge.svg)](https://github.com/axi0m/ratatoskr/actions/workflows/codeql.yml)
 
 # Ratatoskr #
 
