@@ -11,12 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rate limit support for GitLab, GitHub
 - Add logging
 - Add test coverage
-- Simplify main function
-- Add GitHub actions to perform SAST and verify builds
 - Add check if tracker.db does not exist, automatically create and prep it
 - Add verbose parameter for logging level
 - Add parameter to --load to overwrite (delete) entries in DB that don't match reference CSV
+
+## [0.5.0] - 2022-07-19
+
 - Test support for Microsoft Teams, Discord and Slack
+- Add GitHub actions to perform SAST and verify builds
+- Simplify main function
 
 ## [0.4.0] - 2022-06-02
 
