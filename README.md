@@ -106,10 +106,10 @@ pipenv run python3 ratatoskr.py --help
 2. If an existing `tracker.db` file is not present, it'll automatically create one for you.
 
 ```shell
-pipenv run python3 ratatoskr.py --load
+pipenv run python3 ratatoskr.py --load -p discord
 ```
 
-![load](images/load_output.png)
+[![asciicast](https://asciinema.org/a/510231.png)](https://asciinema.org/a/510231)
 
 ### First Run ###
 
@@ -118,11 +118,11 @@ You will want to have a Personal Access Token for GitHub and GitLab, and the web
 ```shell
 export GITHUB_TOKEN='REDACTED'
 export GITLAB_TOKEN='REDACTED'
-export ROCKETCHAT_WEBHOOK='REDACTED'
-pipenv run python3 ratatoskr.py -c -p discord
+export DISCORD_WEBHOOK='REDACTED'
+pipenv run python3 ratatoskr.py --check -p discord
 ```
 
-![check](images/check_output.png)
+[![asciicast](https://asciinema.org/a/510042.png)](https://asciinema.org/a/510042)
 
 ![alerts](images/alerts.png)
 
