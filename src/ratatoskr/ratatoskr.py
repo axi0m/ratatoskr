@@ -145,16 +145,28 @@ def get_gitlab_latest_commit(session, repository):
     query_url = f"https://gitlab.com/api/v4/projects/{project}/repository/commits"
     response = session.get(query_url, timeout=5)
 
+    # Check if JSON
     if "json" in response.headers.get("Content-Type"):
         response_json = response.json()
 
+        # Check if project does not exist
         if response.status_code == 404:
             console.print(
                 f"[!] WARN - Project {repository[0]}/{repository[1]} was not found at {query_url} be sure to confirm the URL",
                 style="bold red",
             )
 
+        # Check if we have expired GitLab Token
+        if response_json["error"] == "invalid_token":
+            console.print(
+                f"[!] Error - Your GitLab token is expired! {response_json['error_description']}",
+                style="bold red",
+            )
+            return None
+
         latest_commit = response_json[0]
+
+        # Return GitLab latest commit URL
         if latest_commit.get("web_url"):
             return latest_commit["web_url"]
     else:
@@ -445,35 +457,38 @@ def parse_arguments():
     # Define parser
     parser = argparse.ArgumentParser()
 
-    # Create mutually exclusive group
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument(
-        "-l",
-        "--load",
-        action="store_true",
-        help="load the repositories to watch into the database",
-    )
-    group.add_argument(
-        "-c",
-        "--check",
-        action="store_true",
-        help="check for new repository releases and commits",
-    )
-    group.add_argument(
-        "-v", "--version", action="version", version=f"{__prog__} {__version__}"
-    )
-    group.add_argument(
-        "-e",
-        "--examples",
-        action="store_true",
-        help="display usage examples and exit",
-    )
-    parser.add_argument(
+    # Define main group
+    arg_group_1 = parser.add_argument_group()
+    arg_group_1.add_argument(
         "-p",
         "--provider",
         type=str,
         choices=["rocketchat", "discord", "msteams", "slack"],
         help="provider to use; required with --check",
+    )
+    arg_group_1.add_argument(
+        "-c",
+        "--check",
+        action="store_true",
+        help="check for new repository releases and commits",
+    )
+
+    # Create mutually exclusive group
+    arg_group_2 = arg_group_1.add_mutually_exclusive_group()
+    arg_group_2.add_argument(
+        "-l",
+        "--load",
+        action="store_true",
+        help="load the repositories to watch into the database",
+    )
+    arg_group_2.add_argument(
+        "-v", "--version", action="version", version=f"{__prog__} {__version__}"
+    )
+    arg_group_2.add_argument(
+        "-e",
+        "--examples",
+        action="store_true",
+        help="display usage examples and exit",
     )
 
     # Parse our arguments into internal variables
@@ -483,8 +498,24 @@ def parse_arguments():
     load = args.load
     check = args.check
     provider = args.provider
+    examples = args.examples
 
-    if provider is None:
+    if examples:
+        console.print(f"Check latest commits and releases and notify Microsoft Teams")
+        console.print(
+            f"    {__prog__} [cyan]--check[/cyan] [cyan]--provider[/cyan] msteams",
+            style="bold blue",
+        )
+        console.print(f"Check latest commits and releases and notify Discord")
+        console.print(
+            f"    {__prog__} [cyan]--check[/cyan] [cyan]--provider[/cyan] discord",
+            style="bold blue",
+        )
+        console.print(f"Load the latest reference CSV into tracker database")
+        console.print(f"    {__prog__} [cyan]--load[/cyan]", style="bold blue")
+        sys.exit(0)
+
+    if check and provider is None:
         console.print(
             f"[!] ERROR - Chat provider was not provided by [green]--provider[/green] argument!",
             style="bold red",
