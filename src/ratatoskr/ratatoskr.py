@@ -3,23 +3,52 @@
 import argparse
 import csv
 import json
+import logging
 import os
-import requests
 import sqlite3 as sl
 import sys
 import time
 import urllib.parse
 from datetime import datetime
-from dotenv import load_dotenv
 from pathlib import Path
+
+import requests
+from __init__ import __prog__, __version__
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.progress import track
-from __init__ import __version__
-from __init__ import __prog__
 
 # Get the current timestamp
 now = datetime.now()
-dt_formatted = now.strftime("%d/%m/%Y %H:%M:%S")
+
+# Create filename to save messages if provider is down
+# Format YYYY-MM-DD
+dt_formatted_filename = now.strftime("%Y-%m-%d")
+
+# Get Process ID
+pid = os.getpid()
+
+# Construct filename to save message state
+filename = f"ratatoskr_{dt_formatted_filename}_{pid}.json"
+
+# Create a custom logger
+logger = logging.getLogger(__name__)
+
+# Create handlers
+c_handler = logging.StreamHandler()
+f_handler = logging.FileHandler(f"ratatoskr_{dt_formatted_filename}_{pid}.log")
+c_handler.setLevel(logging.INFO)
+f_handler.setLevel(logging.INFO)
+
+# Create formatters and add it to handlers
+c_format = logging.Formatter("%(name)s - %(levelname)s - %(message)s")
+f_format = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+c_handler.setFormatter(c_format)
+f_handler.setFormatter(f_format)
+
+# Add handlers to the logger
+logger.addHandler(c_handler)
+logger.addHandler(f_handler)
 
 # Define header values
 USERAGENT = f"ratatoskr-{__version__}"
@@ -29,14 +58,6 @@ console = Console()
 
 # Load .env file
 load_dotenv()
-
-# Create filename to save messages if provider is down
-# Format YYYY-MM-DD
-dt_formatted_filename = now.strftime("%Y-%m-%d")
-# Get Process ID
-pid = os.getpid()
-# Construct filename to save message state
-filename = f"ratatoskr_{dt_formatted_filename}_{pid}.json"
 
 
 def verify_environment(environment_variable):
@@ -620,18 +641,19 @@ def main():
         sys.exit(1)
 
     # Parse provider and format for env check
-    prefix = arguments["Provider"].upper()
+    if arguments["Provider"]:
+        prefix = arguments["Provider"].upper()
 
-    # Verify that our provider webhook is in the environment
-    webhook_url = verify_environment(f"{prefix}_WEBHOOK")
+        # Verify that our provider webhook is in the environment
+        webhook_url = verify_environment(f"{prefix}_WEBHOOK")
 
-    # Exit if we don't have webhook URL
-    if not webhook_url:
-        console.print(
-            f"[!] ERROR - No webhook URL found in environment variables",
-            style="bold red",
-        )
-        sys.exit(1)
+        # Exit if we don't have webhook URL
+        if not webhook_url:
+            console.print(
+                f"[!] ERROR - No webhook URL found in environment variables",
+                style="bold red",
+            )
+            sys.exit(1)
 
     # Define our headers
     github_custom_headers = {
