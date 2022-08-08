@@ -20,6 +20,7 @@ from rich.progress import track
 
 # Get the current timestamp
 now = datetime.now()
+dt_formatted = now.strftime("%d/%m/%Y %H:%M:%S")
 
 # Create filename to save messages if provider is down
 # Format YYYY-MM-DD
