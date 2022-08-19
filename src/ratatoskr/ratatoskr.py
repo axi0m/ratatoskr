@@ -71,6 +71,51 @@ def verify_environment(environment_variable):
         return value
 
 
+def verify_gitlab_token(session):
+    """Check API if access token is valid
+
+    session - Requests session object with headers applied for GitLab token auth
+    """
+
+    query_url = "https://gitlab.com/api/v4/personal_access_tokens"
+    response = session.get(query_url, timeout=5)
+    response_json = response.json()
+
+    # Check if we have expired GitLab Token
+    if response_json["error"] == "invalid_token":
+        console.print(
+            f"[!] Error - Unauthorized, verify GitLab token! {response_json['error_description']}",
+            style="bold red",
+        )
+        return None
+
+    # Check if active
+    if response.ok:
+        return True
+
+
+def verify_github_token(session):
+    """Check API if access token is valid
+
+    session - Requests session object with headers applied for GitHub token auth
+    """
+    query_url = "https://api.github.com/user"
+    response = session.get(query_url, timeout=5)
+    response_json = response.json()
+
+    # Check if we have expired GitHub Token
+    if response.status_code == 401:
+        console.print(
+            f"[!] Error - Unauthorized, verify GitHub token is accurate and not expired! {response_json['message']}",
+            style="bold red",
+        )
+        return None
+
+    # Check if active
+    if response.ok:
+        return True
+
+
 def get_ratelimit_status(session):
     """Get the rate limit status from GitHub API"""
 
@@ -522,6 +567,7 @@ def parse_arguments():
     provider = args.provider
     examples = args.examples
 
+    # Display examples if user requested
     if examples:
         console.print(f"Check latest commits and releases and notify Microsoft Teams")
         console.print(
@@ -537,6 +583,7 @@ def parse_arguments():
         console.print(f"    {__prog__} [cyan]--load[/cyan]", style="bold blue")
         sys.exit(0)
 
+    # Check and webhook provider are required to format the payload
     if check and provider is None:
         console.print(
             f"[!] ERROR - Chat provider was not provided by [green]--provider[/green] argument!",
@@ -689,6 +736,12 @@ def main():
 
     # Check rate limits
     github_ratelimit_response = get_ratelimit_status(s_github)
+
+    # Check GitHub token validity
+    result = verify_github_token(s_github)
+
+    # Check GitLab token validity
+    result = verify_gitlab_token(s_gitlab)
 
     if github_ratelimit_response is None:
         console.print(f"[!] ERROR Unable to confirm rate limits", style="bold red")
