@@ -66,8 +66,12 @@ def verify_environment(environment_variable):
 
     value = os.getenv(environment_variable)
     if not value:
+        logger.error(f"No environment variable defined for {environment_variable}")
         return None
     else:
+        logger.info(
+            f"Identified environment variable is present {environment_variable}"
+        )
         return value
 
 
@@ -87,10 +91,12 @@ def verify_gitlab_token(session):
             f"[!] Error - Unauthorized, verify GitLab token! {response_json['error_description']}",
             style="bold red",
         )
+        logger.error(f"Invalid token for GitLab!")
         return None
 
     # Check if active
     if response.ok:
+        logger.info(f"Verified GitLab Token is active")
         return True
 
 
@@ -109,10 +115,12 @@ def verify_github_token(session):
             f"[!] Error - Unauthorized, verify GitHub token is accurate and not expired! {response_json['message']}",
             style="bold red",
         )
+        logger.error(f"Invalid token for GitHub!")
         return None
 
     # Check if active
     if response.ok:
+        logger.info(f"Verified GitHub Token is active")
         return True
 
 
