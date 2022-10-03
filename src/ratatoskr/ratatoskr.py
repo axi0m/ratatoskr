@@ -85,19 +85,22 @@ def verify_gitlab_token(session):
     response = session.get(query_url, timeout=5)
     response_json = response.json()
 
-    # Check if we have expired GitLab Token
-    if response_json["error"] == "invalid_token":
-        console.print(
-            f"[!] Error - Unauthorized, verify GitLab token! {response_json['error_description']}",
-            style="bold red",
-        )
-        logger.error(f"Invalid token for GitLab!")
-        return None
-
     # Check if active
     if response.ok:
         logger.info(f"Verified GitLab Token is active")
         return True
+
+    # If we don't have 2XX status code
+    if not response.ok:
+
+        # Check if we have expired GitLab Token
+        if response_json["message"] == "401 Unauthorized":
+            console.print(
+                f"[!] Error - Unauthorized, verify GitLab token!",
+                style="bold red",
+            )
+            logger.error(f"Invalid token for GitLab!")
+            return None
 
 
 def verify_github_token(session):
@@ -232,9 +235,9 @@ def get_gitlab_latest_commit(session, repository):
             )
 
         # Check if we have expired GitLab Token
-        if response_json["error"] == "invalid_token":
+        if response.status_code == 401:
             console.print(
-                f"[!] Error - Your GitLab token is expired! {response_json['error_description']}",
+                f"[!] Error - Your GitLab token is expired! {response_json}",
                 style="bold red",
             )
             return None
