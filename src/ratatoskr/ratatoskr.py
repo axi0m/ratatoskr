@@ -92,7 +92,6 @@ def verify_gitlab_token(session):
 
     # If we don't have 2XX status code
     if not response.ok:
-
         # Check if we have expired GitLab Token
         if response_json["message"] == "401 Unauthorized":
             console.print(
@@ -504,9 +503,10 @@ def send_webhook(message, webhook_url, provider, filename):
     # https://docs.rocket.chat/guides/administration/admin-panel/integrations
     if provider == "rocketchat":
         data = {
-            "username": "rocket.cat",
-            "icon_emoji": ":chipmunk:",
-            "attachments": [{"text": message, "color": "#764FA5"}],
+            "emoji": ":chipmunk:",
+            "attachments": [
+                {"title": "ratatoskr notify", "text": message, "color": "#764FA5"}
+            ],
         }
 
     # HTTP POST to our Webhook URL

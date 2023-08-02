@@ -233,3 +233,6 @@ tracker.db
 
 # Ignore pyenv files
 .python-version
+
+# Exclude runner
+runner.sh
