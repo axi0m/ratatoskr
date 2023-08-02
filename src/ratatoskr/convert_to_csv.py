@@ -3,8 +3,9 @@
 # This python script is to extract each sheet in an Excel workbook as a new csv file
 
 import csv
-import xlrd
 import sys
+
+import xlrd
 
 
 def ExceltoCSV(excel_file, csv_file):
@@ -15,7 +16,6 @@ def ExceltoCSV(excel_file, csv_file):
 
     # Iterate over each tab/sheet name
     for sheet_name in workbook.sheet_names():
-
         print(f"[-] INFO Processing sheet name - {sheet_name}")
 
         # Define our worksheet by index

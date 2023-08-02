@@ -11,6 +11,7 @@ requests = "^2.31.0"
 rich = "^12.4.4"
 python-dotenv = "^0.20.0"
 xlrd = "^2.0.1"
+cyclonedx-bom = "^3.10.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.2"
