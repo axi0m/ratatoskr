@@ -29,6 +29,12 @@
 8. Per GitHub API - Uses user-agent header specific to tool.
 9. Reproducible builds via `Pipfile.lock` file.
 
+## Built With ##
+![SQLite Badge](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=fff&style=flat)
+![Python Badge](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=fff&style=flat)
+![GitLab Badge](https://img.shields.io/badge/GitLab-FC6D26?logo=gitlab&logoColor=fff&style=flat)
+![GitHub Badge](https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=fff&style=flat)
+
 ## Supported Webhook Receivers ##
 
 | Platform        | Supported |
