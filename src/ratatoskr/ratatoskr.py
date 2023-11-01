@@ -87,7 +87,7 @@ def verify_gitlab_token(session):
 
     # Check if active
     if response.ok:
-        logger.info(f"Verified GitLab Token is active")
+        logger.info("Verified GitLab Token is active")
         return True
 
     # If we don't have 2XX status code
@@ -95,10 +95,10 @@ def verify_gitlab_token(session):
         # Check if we have expired GitLab Token
         if response_json["message"] == "401 Unauthorized":
             console.print(
-                f"[!] Error - Unauthorized, verify GitLab token!",
+                "[!] Error - Unauthorized, verify GitLab token!",
                 style="bold red",
             )
-            logger.error(f"Invalid token for GitLab!")
+            logger.error("Invalid token for GitLab!")
             return None
 
 
@@ -117,12 +117,12 @@ def verify_github_token(session):
             f"[!] Error - Unauthorized, verify GitHub token is accurate and not expired! {response_json['message']}",
             style="bold red",
         )
-        logger.error(f"Invalid token for GitHub!")
+        logger.error("Invalid token for GitHub!")
         return None
 
     # Check if active
     if response.ok:
-        logger.info(f"Verified GitHub Token is active")
+        logger.info("Verified GitHub Token is active")
         return True
 
 
@@ -332,7 +332,7 @@ def insert_repo(connection, newrepo):
             cursor.execute(sql, newrepo)
     except sl.IntegrityError as e:
         console.print(
-            f"[!] ERROR - Unable to insert new repo into tracker DB", style="bold red"
+            "[!] ERROR - Unable to insert new repo into tracker DB", style="bold red"
         )
         console.print(f"{e}")
         sys.exit(1)
@@ -351,7 +351,7 @@ def confirm_table(connection):
         if len(data) == 0:
             return None
         else:
-            console.print(f"[+] INFO - Table already exists", style="bold green")
+            console.print("[+] INFO - Table already exists", style="bold green")
             return True
 
 
@@ -370,7 +370,7 @@ def delete_repo(connection, repo):
             cursor.execute(sql, repo)
     except sl.IntegrityError as e:
         console.print(
-            f"[!] ERROR - Unable to delete repo from tracker DB", style="bold red"
+            "[!] ERROR - Unable to delete repo from tracker DB", style="bold red"
         )
         console.print(f"{e}")
         sys.exit(1)
@@ -409,7 +409,7 @@ def bootstrap_db(connection):
                 "create table repo (owner, repo, latest_release, latest_commit, last_updated, website)"
             )
     except sl.IntegrityError as e:
-        console.print(f"[!] ERROR - Unable to create repo table", style="bold red")
+        console.print("[!] ERROR - Unable to create repo table", style="bold red")
         console.print(f"{e}")
         sys.exit(1)
 
@@ -580,24 +580,24 @@ def parse_arguments():
 
     # Display examples if user requested
     if examples:
-        console.print(f"Check latest commits and releases and notify Microsoft Teams")
+        console.print("Check latest commits and releases and notify Microsoft Teams")
         console.print(
             f"    {__prog__} [cyan]--check[/cyan] [cyan]--provider[/cyan] msteams",
             style="bold blue",
         )
-        console.print(f"Check latest commits and releases and notify Discord")
+        console.print("Check latest commits and releases and notify Discord")
         console.print(
             f"    {__prog__} [cyan]--check[/cyan] [cyan]--provider[/cyan] discord",
             style="bold blue",
         )
-        console.print(f"Load the latest reference CSV into tracker database")
+        console.print("Load the latest reference CSV into tracker database")
         console.print(f"    {__prog__} [cyan]--load[/cyan]", style="bold blue")
         sys.exit(0)
 
     # Check and webhook provider are required to format the payload
     if check and provider is None:
         console.print(
-            f"[!] ERROR - Chat provider was not provided by [green]--provider[/green] argument!",
+            "[!] ERROR - Chat provider was not provided by [green]--provider[/green] argument!",
             style="bold red",
         )
         sys.exit(1)
@@ -625,7 +625,7 @@ def prepare_database(filename):
         # If the table already exists in the tracker.db file
         if confirm_result:
             console.print(
-                f"[+] INFO - Tracker database is already prepared", style="bold green"
+                "[+] INFO - Tracker database is already prepared", style="bold green"
             )
             return (True, con)
 
@@ -642,7 +642,7 @@ def prepare_database(filename):
                 return (True, con)
             except sl.OperationalError as e:
                 console.print(
-                    f"[!] ERROR - Database has already been initialized!",
+                    "[!] ERROR - Database has already been initialized!",
                     style="bold red",
                 )
                 console.print(f"{e}")
@@ -663,7 +663,7 @@ def prepare_database(filename):
             return (True, con)
         except sl.OperationalError as e:
             console.print(
-                f"[!] ERROR - Database has already been initialized!",
+                "[!] ERROR - Database has already been initialized!",
                 style="bold red",
             )
             console.print(f"{e}")
@@ -674,7 +674,7 @@ def main():
     """Main function"""
 
     # Print a pretty header to console
-    console.print(f" :chipmunk:  ~ Ratatoskr the Norse Squirrel God ~ :chipmunk:")
+    console.print(" :chipmunk:  ~ Ratatoskr the Norse Squirrel God ~ :chipmunk:")
 
     # High-level function to parse arguments
     arguments = parse_arguments()
@@ -686,7 +686,7 @@ def main():
     # Exit if we don't have GitHub API token
     if not github_token:
         console.print(
-            f"[!] ERROR - No GitHub Personal Access Token in environment variables",
+            "[!] ERROR - No GitHub Personal Access Token in environment variables",
             style="bold red",
         )
         sys.exit(1)
@@ -694,7 +694,7 @@ def main():
     # Exit if we don't have GitLab API Token
     if not gitlab_token:
         console.print(
-            f"[!] ERROR - No GitLab Personal Access Token in environment variables",
+            "[!] ERROR - No GitLab Personal Access Token in environment variables",
             style="bold red",
         )
         sys.exit(1)
@@ -709,7 +709,7 @@ def main():
         # Exit if we don't have webhook URL
         if not webhook_url:
             console.print(
-                f"[!] ERROR - No webhook URL found in environment variables",
+                "[!] ERROR - No webhook URL found in environment variables",
                 style="bold red",
             )
             sys.exit(1)
@@ -739,7 +739,7 @@ def main():
 
     # Ensure we got True from previous function call
     if not db_prep_result[0]:
-        console.print(f"[!] ERROR - Preparing database!", style="bold red")
+        console.print("[!] ERROR - Preparing database!", style="bold red")
         sys.exit(1)
 
     # Use a friendly name for our connection object
@@ -755,7 +755,7 @@ def main():
     result = verify_gitlab_token(s_gitlab)
 
     if github_ratelimit_response is None:
-        console.print(f"[!] ERROR Unable to confirm rate limits", style="bold red")
+        console.print("[!] ERROR Unable to confirm rate limits", style="bold red")
         sys.exit(1)
 
     # If user provided --load argument, read CSV and load into tracker
@@ -764,7 +764,7 @@ def main():
         repositories = get_urls("GitHub_Tools_List.csv")
 
         console.print(
-            f"[+] Loading repositories to monitor into tracker..", style="bold green"
+            "[+] Loading repositories to monitor into tracker..", style="bold green"
         )
 
         # We enumerate over all repository URLs
