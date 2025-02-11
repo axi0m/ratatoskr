@@ -1,5 +1,5 @@
 [![GitHub](https://img.shields.io/github/license/axi0m/ratatoskr?color=bright-green&style=flat-square)](https://github.com/axi0m/ratatoskr/blob/main/LICENSE.md)
-![Maintenance](https://img.shields.io/maintenance/yes/2023?style=flat-square)
+![Maintenance](https://img.shields.io/maintenance/yes/2025?style=flat-square)
 [![Code Style Black](https://img.shields.io/badge/code%20style-black-000000.svg?style=flat-square)](https://github.com/psf/black)
 ![GitHub Pipenv locked Python version](https://img.shields.io/github/pipenv/locked/python-version/axi0m/ratatoskr?style=flat-square)
 [![Python Build with poetry](https://github.com/axi0m/ratatoskr/actions/workflows/build-poetry.yml/badge.svg?style=flat-square)](https://github.com/axi0m/ratatoskr/actions/workflows/build-poetry.yml)
